@@ -1,4 +1,5 @@
 from nltk.corpus import brown
+from nltk import ngrams
 from tkinter import *
 from tkinter.ttk import Combobox
 
@@ -21,15 +22,50 @@ def make_trie(*wordlist):
      return start
 
 ###############################################################################
+# Autocompleter Class definition
+###############################################################################
+class AutoCompleter():
+    def __init__(self, data):
+        self.trie = make_trie(data)
+        self.bigrams = ngrams(data, 2)
+        self.trigrams = ngrams(data, 3)
+
+    def suggester(self, input):
+        singlewordsuggs = (self.trie_suggester(input))
+        phrasesuggs = []
+
+        suggs = singlewordsuggs
+        return suggs
+
+    def trie_suggester(self, word):
+        wordlist = []
+        sub_trie = self.trie
+        for letter in word:
+            if letter in sub_trie:
+                sub_trie = sub_trie[letter]
+            else:
+                return wordlist
+
+        for section in sub_trie.keys():
+            if (section == '$'):
+                wordlist.append(word)
+                continue
+            temp_word = word + section
+            wordlist.extend(self.trie_suggester(temp_word))
+
+        return wordlist
+
+###############################################################################
 # Code from
 # http://code.activestate.com/recipes/578253-an-entry-with-autocompletion-for-the-tkinter-gui/
-# edited to use custom trie (prefix tree)
+# edited to use custom autocompletion
 ###############################################################################
 class AutocompleteEntry(Entry):
-    def __init__(self, trie, *args, **kwargs):
+    def __init__(self, data, *args, **kwargs):
 
         Entry.__init__(self, *args, **kwargs)
-        self.trie = trie
+        self.completer = AutoCompleter(data)
+
         self.var = self["textvariable"]
         if self.var == '':
             self.var = self["textvariable"] = StringVar()
@@ -99,34 +135,18 @@ class AutocompleteEntry(Entry):
                 self.lb.activate(index)
 
     def find_suggestions(self):
-        return (self.find_sugg_rec(self.var.get()))
+        return (self.completer.suggester(self.var.get()))
 
-    def find_sugg_rec(self, word):
-        wordlist = []
-        sub_trie = self.trie
-        for letter in word:
-            if letter in sub_trie:
-                sub_trie = sub_trie[letter]
-            else:
-                return wordlist
-
-        for section in sub_trie.keys():
-            if (section == '$'):
-                wordlist.append(word)
-                continue
-            temp_word = word + section
-            wordlist.extend(self.find_sugg_rec(temp_word))
-
-        return wordlist
 
 if __name__ == '__main__':
+    data = brown.words()
+
     root = Tk()
     root.title("Auto Complete - CS173")
     root.geometry("250x250") #You want the size of the app to be 500x500
     root.resizable(0, 0) #Don't allow resizing in the x or y direction
 
-    trie = make_trie(brown.words())
-    entry = AutocompleteEntry(trie, root)
+    entry = AutocompleteEntry(data, root)
     entry.grid(row=250, column=250)
     Button(text='Search').grid(row=251, column=250)
 
