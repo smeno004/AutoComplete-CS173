@@ -31,7 +31,9 @@ class AutoCompleter():
         self.trigrams = ngrams(data, 3)
 
     def suggester(self, input):
-        singlewordsuggs = (self.trie_suggester(input))
+        input_words = input.split()
+        lastword = input_words[-1]
+        singlewordsuggs = (self.trie_suggester(lastword))
         phrasesuggs = []
 
         suggs = singlewordsuggs
