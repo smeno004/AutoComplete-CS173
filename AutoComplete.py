@@ -2,6 +2,7 @@ from nltk.corpus import brown
 from nltk import ngrams
 from tkinter import *
 from tkinter.ttk import Combobox
+from collections import Counter
 
 print ("**************************************")
 print ("Auto-Complete (CS173 - Assignment 5)")
@@ -27,17 +28,25 @@ def make_trie(*wordlist):
 class AutoCompleter():
     def __init__(self, data):
         self.trie = make_trie(data)
-        self.bigrams = ngrams(data, 2)
-        self.trigrams = ngrams(data, 3)
+        self.unigrams = self.build_freq_distribution(data,1)
+        self.bigrams = self.build_freq_distribution(data, 2)
+        self.trigrams = self.build_freq_distribution(data, 3)
+
+    def build_freq_distribution(self, data, n):
+        n_grams = dict(Counter(ngrams(data,n)))
+        total = sum(n_grams.values())
+        freq = {i: j / total for i, j in n_grams.items()}
+        return freq
 
     def suggester(self, input):
         input_words = input.split()
         lastword = input_words[-1]
         singlewordsuggs = (self.trie_suggester(lastword))
         phrasesuggs = []
+        suggs = singlewordsuggs 
 
-        suggs = singlewordsuggs
-        return suggs
+        probs = ["{0}: {1:.5f}".format(w,self.unigrams[tuple([w])]) for w in suggs]
+        return probs
 
     def trie_suggester(self, word):
         wordlist = []
