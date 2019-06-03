@@ -3,6 +3,7 @@ from nltk import ngrams
 from tkinter import *
 from tkinter.ttk import Combobox
 from collections import Counter
+import numpy
 
 print ("**************************************")
 print ("Auto-Complete (CS173 - Assignment 5)")
@@ -28,6 +29,7 @@ def make_trie(*wordlist):
 class AutoCompleter():
     def __init__(self, data):
         self.trie = make_trie(data)
+        self.phrase = []
         self.unigrams = self.build_freq_distribution(data,1)
         self.bigrams = self.build_freq_distribution(data, 2)
         self.trigrams = self.build_freq_distribution(data, 3)
@@ -38,15 +40,45 @@ class AutoCompleter():
         freq = {i: j / total for i, j in n_grams.items()}
         return freq
 
+    def P(self,gram):
+        try:
+            if(len(gram) == 1):
+                return self.unigrams[gram]
+            elif(len(gram) == 2):
+                return self.bigrams[gram]
+            elif(len(gram) == 3):
+                return self.trigrams[gram]
+            else:
+                return 0
+        except KeyError:
+            return numpy.finfo(float).tiny
+
     def suggester(self, input):
         input_words = input.split()
+        if input_words == []:
+            return []  
+        #grab the current word being created
         lastword = input_words[-1]
+        #grab the list of suggested words
         singlewordsuggs = (self.trie_suggester(lastword))
-        phrasesuggs = []
-        suggs = singlewordsuggs 
 
-        probs = ["{0}: {1:.5f}".format(w,self.unigrams[tuple([w])]) for w in suggs]
-        return probs
+        #store the phrases and their probability
+        phrases = []
+        for word in singlewordsuggs:
+            input_words[-1] = word
+            phrase = ' '.join(input_words)
+            prob = 1
+            #grab prob P(w_i) * P(w_i | w_i-1) * P(w_i | w_i-2 w_i-1 )
+            for i in range(len(input_words),len(input_words) - 3,-1):
+                gram = tuple(input_words[i-1:])
+                prob *= self.P(gram)
+            phrases.append(tuple([phrase,prob]))
+
+        #from the suggestions, try and find the highest probability
+        suggs = sorted(phrases, key = lambda x: x[1], reverse=True)
+        #formatting
+        suggs = ["{0}: {1:0.5f}".format(x[0],x[1]) for x in suggs]
+        return suggs
 
     def trie_suggester(self, word):
         wordlist = []
