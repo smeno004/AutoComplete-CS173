@@ -24,34 +24,72 @@ def make_trie(*wordlist):
      return start
 
 ###############################################################################
+#Reverse Index For Ngrams Creater
+###############################################################################
+def sum_ngram_counts(ngram_dict, key):
+    total = 0
+    for k in ngram_dict[key].keys():
+        total = total + ngram_dict[key][k]
+    return total
+
+def reverseIndex1gram(unigrams):
+    unigram_count_index = {}
+    unigram_prob_index = {}
+    total = 0
+    for unigram in unigrams:
+        start = unigram[0]
+        if start not in unigram_count_index.keys():
+            unigram_count_index[start] = 1 #add if to bigram_count_index
+        else:
+            unigram_count_index[start] +=1
+        total +=1
+    for key in unigram_count_index.keys():
+        unigram_prob_index[key] = unigram_count_index[key]/total
+    return unigram_prob_index
+
+def reverseIndex2gram(bigrams):
+    bigram_count_index = {}
+    bigram_prob_index = {}
+    for bigram in bigrams:
+        start = bigram[0]
+        end = bigram[1]
+        if start not in bigram_count_index.keys():
+            bigram_count_index[start] = {} #add if to bigram_count_index
+        count = 0
+        if end in bigram_count_index[start].keys():
+            count = bigram_count_index[start][end]
+        bigram_count_index[start][end] = count + 1
+
+    for key in bigram_count_index.keys():
+        sum_for_key = sum_ngram_counts(bigram_count_index, key)
+        if (key not in bigram_prob_index.keys()):
+            bigram_prob_index[key] = {}
+        for second in bigram_count_index[key].keys():
+            if (second not in bigram_prob_index[key].keys()):
+                bigram_prob_index[key][second] = {}
+            bigram_prob_index[key][second] = bigram_count_index[key][second] / sum_for_key
+    return bigram_prob_index
+
+###############################################################################
 # Autocompleter Class definition
 ###############################################################################
 class AutoCompleter():
     def __init__(self, data):
         self.trie = make_trie(data)
         self.phrase = []
-        self.unigrams = self.build_freq_distribution(data,1)
-        self.bigrams = self.build_freq_distribution(data, 2)
-        self.trigrams = self.build_freq_distribution(data, 3)
-
-    def build_freq_distribution(self, data, n):
-        n_grams = dict(Counter(ngrams(data,n)))
-        total = sum(n_grams.values())
-        freq = {i: j / total for i, j in n_grams.items()}
-        return freq
-
-    def P(self,gram):
-        try:
-            if(len(gram) == 1):
-                return self.unigrams[gram]
-            elif(len(gram) == 2):
-                return self.bigrams[gram]
-            elif(len(gram) == 3):
-                return self.trigrams[gram]
-            else:
-                return 0
-        except KeyError:
-            return numpy.finfo(float).tiny
+        self.unigram_prob_index = reverseIndex1gram(ngrams(data,1))
+        self.bigram_prob_index = reverseIndex2gram(ngrams(data,2))
+        print("Auto Completer Set up")
+    
+    def predict(self,chain,count):
+        if count < 1:
+            return chain
+        else:
+            last = chain[-1]
+            probs = self.bigram_prob_index[last]
+            sorted_probs = sorted(probs.items(), key=lambda kv: kv[1],reverse=True)
+            chain.append(sorted_probs[0][0])
+        return self.predict(chain,count-1)
 
     def suggester(self, input):
         input_words = input.split()
@@ -61,24 +99,16 @@ class AutoCompleter():
         lastword = input_words[-1]
         #grab the list of suggested words
         singlewordsuggs = (self.trie_suggester(lastword))
-
-        #store the phrases and their probability
+        #
+        suggs = [tuple([s,self.unigram_prob_index[s]]) for s in singlewordsuggs]
+        sorted_suggs = sorted(suggs, key=lambda kv: kv[1],reverse=True)
+        top5 = [x[0] for x in sorted_suggs[:5]]
         phrases = []
-        for word in singlewordsuggs:
-            input_words[-1] = word
-            phrase = ' '.join(input_words)
-            prob = 1
-            #grab prob P(w_i) * P(w_i | w_i-1) * P(w_i | w_i-2 w_i-1 )
-            for i in range(len(input_words),len(input_words) - 3,-1):
-                gram = tuple(input_words[i-1:])
-                prob *= self.P(gram)
-            phrases.append(tuple([phrase,prob]))
-
-        #from the suggestions, try and find the highest probability
-        suggs = sorted(phrases, key = lambda x: x[1], reverse=True)
-        #formatting
-        suggs = ["{0}: {1:0.5f}".format(x[0],x[1]) for x in suggs]
-        return suggs
+        for t in top5:
+            temp = self.predict(input_words[:-1] + [t],3)
+            phrases.append(' '.join(temp))
+        
+        return phrases
 
     def trie_suggester(self, word):
         wordlist = []
