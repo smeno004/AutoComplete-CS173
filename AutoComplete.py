@@ -3,7 +3,7 @@ from nltk import ngrams
 from tkinter import *
 from tkinter.ttk import Combobox
 from collections import Counter
-import numpy
+import numpy as np
 
 print ("**************************************")
 print ("Auto-Complete (CS173 - Assignment 5)")
@@ -81,7 +81,7 @@ class AutoCompleter():
         self.bigram_prob_index = reverseIndex2gram(ngrams(data,2))
         print("Auto Completer Set up")
     
-    def predict(self,chain,count):
+    def predict_chain(self,chain,count):
         if count < 1:
             return chain
         else:
@@ -89,7 +89,16 @@ class AutoCompleter():
             probs = self.bigram_prob_index[last]
             sorted_probs = sorted(probs.items(), key=lambda kv: kv[1],reverse=True)
             chain.append(sorted_probs[0][0])
-        return self.predict(chain,count-1)
+        return self.predict_chain(chain,count-1)
+
+    def P(self,*argv):
+        try:
+            if len(argv) == 1:
+                return self.unigram_prob_index[argv[0]]
+            elif len(argv) == 2:
+                return self.bigram_prob_index[argv[0]][argv[1]]
+        except KeyError:
+            return np.finfo(float).tiny 
 
     def suggester(self, input):
         input_words = input.split()
@@ -99,13 +108,18 @@ class AutoCompleter():
         lastword = input_words[-1]
         #grab the list of suggested words
         singlewordsuggs = (self.trie_suggester(lastword))
-        #
-        suggs = [tuple([s,self.unigram_prob_index[s]]) for s in singlewordsuggs]
-        sorted_suggs = sorted(suggs, key=lambda kv: kv[1],reverse=True)
-        top5 = [x[0] for x in sorted_suggs[:5]]
+        top5 = []
+        if(len(input_words)) <  2: #prob for unigram
+            suggs = [tuple([s,self.P(s)]) for s in singlewordsuggs]
+            sorted_suggs = sorted(suggs, key=lambda kv: kv[1],reverse=True)
+            top5 = [x[0] for x in sorted_suggs[:5]]
+        else:   #calculate the bigram probability
+            suggs = [tuple([s, self.P(lastword,s)]) for s in singlewordsuggs]
+            sorted_suggs = sorted(suggs, key=lambda kv: kv[1],reverse=True)
+            top5 = [x[0] for x in sorted_suggs[:5]]
         phrases = []
         for t in top5:
-            temp = self.predict(input_words[:-1] + [t],3)
+            temp = self.predict_chain(input_words[:-1] + [t],3)
             phrases.append(' '.join(temp))
         
         return phrases
