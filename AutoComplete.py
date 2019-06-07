@@ -4,6 +4,7 @@ from tkinter import *
 from tkinter.ttk import Combobox
 from collections import Counter
 import numpy as np
+import string
 
 print ("**************************************")
 print ("Auto-Complete (CS173 - Assignment 5)")
@@ -146,7 +147,7 @@ class AutoCompleter():
         return self.predict_chain(chain,count-1)
 
     def suggester(self, input):
-        input_words = input.split()
+        input_words = input.lower().split()
         if input_words == []:
             return []  
         #grab the current word being created
@@ -168,7 +169,7 @@ class AutoCompleter():
             top5 = [x[0] for x in sorted_suggs[:5]]
         phrases = []
         for t in top5:
-            temp = self.predict_chain(input_words[:-1] + [t],3)
+            temp = self.predict_chain(input_words[:-1] + [t],0)
             phrases.append(' '.join(temp))
         
         return phrases
@@ -275,7 +276,10 @@ class AutocompleteEntry(Entry):
 
 
 if __name__ == '__main__':
+    punctuation = list(string.punctuation)
+    special = ["''"]
     data = brown.words()
+    data = [d.lower() for d in data if d not in punctuation and d not in special]
 
     root = Tk()
     root.title("Auto Complete - CS173")
