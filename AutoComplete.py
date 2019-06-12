@@ -137,7 +137,7 @@ class AutoCompleter():
         if count < 1:
             return chain
         else:
-            last = tuple([ chain[-1] ])
+            last = tuple(chain[-2:])
             probs = self.predict_list(last)
             if probs:
                 sorted_probs = sorted(probs.items(), key=lambda kv: kv[1],reverse=True)
@@ -169,7 +169,7 @@ class AutoCompleter():
             top5 = [x[0] for x in sorted_suggs[:5]]
         phrases = []
         for t in top5:
-            temp = self.predict_chain(input_words[:-1] + [t],0)
+            temp = self.predict_chain(input_words[:-1] + [t],3)
             phrases.append(' '.join(temp))
         
         return phrases
@@ -277,7 +277,7 @@ class AutocompleteEntry(Entry):
 
 if __name__ == '__main__':
     punctuation = list(string.punctuation)
-    special = ["''"]
+    special = ["''","``"]
     data = brown.words()
     data = [d.lower() for d in data if d not in punctuation and d not in special]
 
